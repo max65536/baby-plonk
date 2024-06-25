@@ -277,7 +277,7 @@ class Prover:
                 * (C_coeff + S3_coeff * self.beta + self.gamma)
         permutation_grand_product_coeff = (
             # TODO: your code
-            ZW_coeff * G_coeff - Z_coeff * F_coeff
+            Z_coeff * F_coeff - ZW_coeff * G_coeff
         )
 
         permutation_first_row_coeff = (Z_coeff - Scalar(1)) * L0_coeff
