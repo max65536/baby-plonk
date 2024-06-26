@@ -30,9 +30,13 @@ class Proof:
         proof["qm_eval"] = self.msg_4.qm_eval
         proof["qo_eval"] = self.msg_4.qo_eval
         proof["qc_eval"] = self.msg_4.qc_eval
+        proof["qk_eval"] = self.msg_4.qk_eval
         proof["s1_eval"] = self.msg_4.s1_eval
         proof["s2_eval"] = self.msg_4.s2_eval
         proof["s3_eval"] = self.msg_4.s3_eval
+        proof["t1_eval"] = self.msg_4.t1_eval
+        proof["t2_eval"] = self.msg_4.t2_eval
+        proof["t3_eval"] = self.msg_4.t3_eval        
         proof["z_eval"] = self.msg_4.z_eval
         proof["zw_eval"] = self.msg_4.zw_eval
         proof["t_eval"] = self.msg_4.t_eval
@@ -97,7 +101,7 @@ class Prover:
 
         # Round 1
         msg_1 = self.round_1(witness)
-        self.beta, self.gamma = transcript.round_1(msg_1)
+        self.tau = transcript.round_1(msg_1)
 
         # Round 2
         msg_2 = self.round_2()
@@ -133,6 +137,12 @@ class Prover:
         B_values = [Scalar(0) for _ in range(group_order)]
         C_values = [Scalar(0) for _ in range(group_order)]
 
+        self.T1_values = [Scalar(i) for i in range(group_order)]
+        self.T2_values = [Scalar(i) for i in range(group_order, group_order * 2)]
+        self.T3_values = [Scalar(i) for i in range(group_order * 2, group_order * 3)]
+
+        self.QK_values = [i % 2 for i in range(group_order)]
+
         for i, gate_wires in enumerate(program.wires()):
             A_values[i] = Scalar(witness[gate_wires.L])
             B_values[i] = Scalar(witness[gate_wires.R])
@@ -141,6 +151,10 @@ class Prover:
         self.A = Polynomial(A_values, Basis.LAGRANGE)
         self.B = Polynomial(B_values, Basis.LAGRANGE)
         self.C = Polynomial(C_values, Basis.LAGRANGE)
+
+        self.A_values = A_values
+        self.B_values = B_values
+        self.C_values = C_values
 
         a_1 = setup.commit(self.A)
         b_1 = setup.commit(self.B)
@@ -164,41 +178,42 @@ class Prover:
         group_order = self.group_order
         setup = self.setup
 
-        Z_values = [Scalar(1)]
-        roots_of_unity = Scalar.roots_of_unity(group_order)
+        T_values = []
         for i in range(group_order):
-            Z_values.append(
-                Z_values[-1]
-                * self.rlc(self.A.values[i], roots_of_unity[i])
-                * self.rlc(self.B.values[i], 2 * roots_of_unity[i])
-                * self.rlc(self.C.values[i], 3 * roots_of_unity[i])
-                / self.rlc(self.A.values[i], self.pk.S1.values[i])
-                / self.rlc(self.B.values[i], self.pk.S2.values[i])
-                / self.rlc(self.C.values[i], self.pk.S3.values[i])
-            )
-        # The last value is 1
-        assert Z_values.pop() == 1
-
-        # Sanity-check that Z was computed correctly
+            T_values.append(self.T1_values[i] + self.tau * self.T2_values[i] + self.tau * self.tau * self.T3_values[i])
+        
+        F_values = []
         for i in range(group_order):
-            assert (
-                self.rlc(self.A.values[i], roots_of_unity[i])
-                * self.rlc(self.B.values[i], 2 * roots_of_unity[i])
-                * self.rlc(self.C.values[i], 3 * roots_of_unity[i])
-            ) * Z_values[i] - (
-                self.rlc(self.A.values[i], self.pk.S1.values[i])
-                * self.rlc(self.B.values[i], self.pk.S2.values[i])
-                * self.rlc(self.C.values[i], self.pk.S3.values[i])
-            ) * Z_values[
-                (i + 1) % group_order
-            ] == 0
+            if self.QK_values[i]==0:
+                F_values.append(self.A_values[i] + self.tau * self.B_values[i] + self.tau * self.tau * self.C_values[i])
+            else:
+                F_values.append(self.T1_values[group_order-1] + self.tau * self.T2_values[group_order-1] + self.tau * self.tau * self.T3_values[group_order-1])
 
-        Z = Polynomial(Z_values, Basis.LAGRANGE)
-        z_1 = setup.commit(Z)
-        print("Permutation accumulator polynomial successfully generated")
+        S_values = T_values + F_values
+        S_values = S_values.sort()
 
-        self.Z = Z
-        return Message2(z_1)
+        S_even_values = []
+        S_odd_values  = []
+        for i in range(len(S_values)):
+            if i % 2 == 0:
+                S_even_values.append(S_values[i])
+            else:
+                S_odd_values.append(S_values[i])
+
+        F = Polynomial(F_values, Basis.LAGRANGE)
+        T = Polynomial(T_values, Basis.LAGRANGE)
+        S_even = Polynomial(S_even_values, Basis.LAGRANGE)
+        S_odd = Polynomial(S_odd_values, Basis.LAGRANGE)
+        f_1 = setup.commit(F)
+        t_1 = setup.commit(T)
+        s_even_1 = setup.commit(S_even)
+        s_odd_1 = setup.commit(S_odd)
+        
+        self.F = F
+        self.T = T
+        self.S_even = S_even
+        self.S_odd  = S_odd
+        return Message2(f_1, t_1, s_even_1, s_odd_1)
 
     def round_3(self) -> Message3:
         # https://github.com/sec-bit/learning-zkp/blob/develop/plonk-intro-cn/plonk-constraints.md
@@ -211,7 +226,7 @@ class Prover:
 
         roots_of_unity = Scalar.roots_of_unity(group_order)
 
-        A_coeff, B_coeff, C_coeff, S1_coeff, S2_coeff, S3_coeff, Z_coeff, QL_coeff, QR_coeff, QM_coeff, QO_coeff, QC_coeff, PI_coeff = (
+        A_coeff, B_coeff, C_coeff, S1_coeff, S2_coeff, S3_coeff, Z_coeff, QL_coeff, QR_coeff, QM_coeff, QO_coeff, QC_coeff, QK_coeff, T1_coeff, T2_coeff, T3_coeff, PI_coeff = (
             x.ifft()
             for x in (
                 self.A,
@@ -226,6 +241,10 @@ class Prover:
                 self.pk.QM,
                 self.pk.QO,
                 self.pk.QC,
+                self.pk.QK,
+                self.pk.T1,
+                self.pk.T2,
+                self.pk.T3,
                 self.PI,
             )
         )
@@ -313,6 +332,7 @@ class Prover:
         self.QM_coeff = QM_coeff
         self.QO_coeff = QO_coeff
         self.QC_coeff = QC_coeff
+        self.QK_coeff = QK_coeff
         self.PI_coeff = PI_coeff
         self.T_coeff = T_coeff
 
@@ -337,6 +357,7 @@ class Prover:
         qm_eval = self.QM_coeff.coeff_eval(zeta)
         qo_eval = self.QO_coeff.coeff_eval(zeta)
         qc_eval = self.QC_coeff.coeff_eval(zeta)
+        qk_eval = self.QK_coeff.coeff_eval(zeta)
         t_eval = self.T_coeff.coeff_eval(zeta)
 
         self.a_eval = a_eval
@@ -347,6 +368,7 @@ class Prover:
         self.qm_eval = qm_eval
         self.qo_eval = qo_eval
         self.qc_eval = qc_eval
+        self.qk_eval = qk_eval
         self.s1_eval = s1_eval
         self.s2_eval = s2_eval
         self.s3_eval = s3_eval
@@ -363,6 +385,7 @@ class Prover:
             qm_eval,
             qo_eval,
             qc_eval,
+            qk_eval,
             s1_eval,
             s2_eval,
             s3_eval,

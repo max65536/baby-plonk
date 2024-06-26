@@ -22,12 +22,20 @@ class VerificationKey:
     Qo: G1Point
     # [q_C(x)]₁ (commitment to constants selector polynomial)
     Qc: G1Point
+    # [q_K(x)]₁ (commitment to lookup selector polynomial)
+    Qk: G1Point    
     # [S_σ1(x)]₁ (commitment to the first permutation polynomial S_σ1(X))
     S1: G1Point
     # [S_σ2(x)]₁ (commitment to the second permutation polynomial S_σ2(X))
     S2: G1Point
     # [S_σ3(x)]₁ (commitment to the third permutation polynomial S_σ3(X))
     S3: G1Point
+    # [t_1(x)]₁ (commitment to the first lookup polynomial t_1(X))
+    T1: G1Point    
+    # [t_2(x)]₁ (commitment to the first lookup polynomial t_2(X))
+    T2: G1Point    
+    # [t_3(x)]₁ (commitment to the first lookup polynomial t_3(X))
+    T3: G1Point
     # [x]₂ = xH, where H is a generator of G_2
     X_2: G2Point
     # nth root of unity, where n is the program's group order.
@@ -63,6 +71,7 @@ class VerificationKey:
         self.verify_commitment(proof, proof["W_z"], "W_z_quot", "z_eval", zeta)
         self.verify_commitment(proof, proof["W_zw"], "W_zw_quot", "zw_eval", zeta)
         self.verify_commitment(proof, proof["W_t"], "W_t_quot", "t_eval", zeta)
+        self.verify_commitment(proof, self.Qk, "W_qk_quot", "qk_eval", zeta)
         self.verify_commitment(proof, self.Ql, "W_ql_quot", "ql_eval", zeta)
         self.verify_commitment(proof, self.Qr, "W_qr_quot", "qr_eval", zeta)
         self.verify_commitment(proof, self.Qm, "W_qm_quot", "qm_eval", zeta)
@@ -71,6 +80,9 @@ class VerificationKey:
         self.verify_commitment(proof, self.S1, "W_s1_quot", "s1_eval", zeta)
         self.verify_commitment(proof, self.S2, "W_s2_quot", "s2_eval", zeta)
         self.verify_commitment(proof, self.S3, "W_s3_quot", "s3_eval", zeta)
+        self.verify_commitment(proof, self.S1, "W_t1_quot", "t1_eval", zeta)
+        self.verify_commitment(proof, self.S2, "W_t2_quot", "t2_eval", zeta)
+        self.verify_commitment(proof, self.S3, "W_t3_quot", "t3_eval", zeta)
 
         a_eval = proof["a_eval"]
         b_eval = proof["b_eval"]
@@ -80,9 +92,13 @@ class VerificationKey:
         qm_eval = proof["qm_eval"]
         qo_eval = proof["qo_eval"]
         qc_eval = proof["qc_eval"]
+        qk_eval = proof["qk_eval"]
         s1_eval = proof["s1_eval"]
         s2_eval = proof["s2_eval"]
         s3_eval = proof["s3_eval"]
+        t1_eval = proof["t1_eval"]
+        t2_eval = proof["t2_eval"]
+        t3_eval = proof["t3_eval"]        
         z_eval = proof["z_eval"]
         zw_eval = proof["zw_eval"]
         t_eval = proof["t_eval"]

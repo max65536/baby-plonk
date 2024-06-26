@@ -17,8 +17,11 @@ class Message1:
 
 @dataclass
 class Message2:
-    # [z(x)]₁ (commitment to permutation polynomial)
-    z_1: G1Point
+    # [f(x)]₁ (commitment to permutation polynomial)
+    f_1: G1Point
+    t_1: G1Point
+    s_even_1: G1Point
+    s_odd_1:  G1Point
 
 
 @dataclass
@@ -45,12 +48,20 @@ class Message4:
     qo_eval: Scalar
     # Evaluation of QC(X) at evaluation challenge ζ
     qc_eval: Scalar
+    # Evaluation of QK(X) at evaluation challenge ζ
+    qk_eval: Scalar
     # Evaluation of the first permutation polynomial S_σ1(X) at evaluation challenge ζ
     s1_eval: Scalar
     # Evaluation of the second permutation polynomial S_σ2(X) at evaluation challenge ζ
     s2_eval: Scalar
     # Evaluation of the second permutation polynomial S_σ3(X) at evaluation challenge ζ
     s3_eval: Scalar
+    # Evaluation of the first look polynomial t_1(X) at evaluation challenge ζ
+    t1_eval: Scalar
+    # Evaluation of the second look polynomial t_2(X) at evaluation challenge ζ
+    t2_eval: Scalar
+    # Evaluation of the second look polynomial t_3(X) at evaluation challenge ζ
+    t3_eval: Scalar            
     # Evaluation of the permutation polynomial z(X) at the evaluation challenge ζ
     z_eval: Scalar
     # Evaluation of the shifted permutation polynomial z(X) at the shifted evaluation challenge ζω
@@ -117,10 +128,11 @@ class Transcript(MerlinTranscript):
         self.append_point(b"c_1", message.c_1)
 
         # The first two Fiat-Shamir challenges
-        beta = self.get_and_append_challenge(b"beta")
-        gamma = self.get_and_append_challenge(b"gamma")
+        # beta = self.get_and_append_challenge(b"beta")
+        # gamma = self.get_and_append_challenge(b"gamma")
+        tau = self.get_and_append_challenge(b"gamma")
 
-        return beta, gamma
+        return tau
 
     def round_2(self, message: Message2) -> tuple[Scalar, Scalar]:
         self.append_point(b"z_1", message.z_1)

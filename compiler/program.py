@@ -126,9 +126,9 @@ class Program:
     
     def make_t_polynomials(self) -> dict[int, Polynomial]:
         T_values = {
-            1: [Scalar(np.random.randint(0,10))] * self.group_order,
-            2: [Scalar(np.random.randint(0,10))] * self.group_order,
-            3: [Scalar(np.random.randint(0,10))] * self.group_order,
+            1: [Scalar(i) for i in range(self.group_order)],
+            2: [Scalar(i) for i in range(self.group_order, self.group_order * 2)],
+            3: [Scalar(i) for i in range(self.group_order * 2, self.group_order * 3)],
         }
 
         T = {}
