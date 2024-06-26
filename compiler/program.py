@@ -22,13 +22,20 @@ class CommonPreprocessedInput:
     QO: Polynomial
     # q_C(X) constants selector polynomial
     QC: Polynomial
+    # q_K(x) lookup selector polynomial
+    QK: Polynomial
     # S_σ1(X) first permutation polynomial S_σ1(X)
     S1: Polynomial
     # S_σ2(X) second permutation polynomial S_σ2(X)
     S2: Polynomial
     # S_σ3(X) third permutation polynomial S_σ3(X)
     S3: Polynomial
-
+    # t1(x) the first column of lookup table
+    T1: Polynomial
+    # t2(x) the first column of lookup table
+    T2: Polynomial
+    # t3(x) the first column of lookup table
+    T3: Polynomial
 
 class Program:
     constraints: list[AssemblyEqn]
@@ -42,8 +49,9 @@ class Program:
         self.group_order = group_order
 
     def common_preprocessed_input(self) -> CommonPreprocessedInput:
-        L, R, M, O, C = self.make_gate_polynomials()
+        L, R, M, O, C, K = self.make_gate_polynomials()
         S = self.make_s_polynomials()
+        T = self.make_t_polynomials()
         return CommonPreprocessedInput(
             self.group_order,
             M,
@@ -51,9 +59,13 @@ class Program:
             R,
             O,
             C,
+            K,
             S[Column.LEFT],
             S[Column.RIGHT],
             S[Column.OUTPUT],
+            T[1],
+            T[2],
+            T[3]
         )
 
     @classmethod
@@ -111,6 +123,20 @@ class Program:
         S[Column.OUTPUT] = Polynomial(S_values[Column.OUTPUT], Basis.LAGRANGE)
 
         return S
+    
+    def make_t_polynomials(self) -> dict[int, Polynomial]:
+        T_values = {
+            1: [Scalar(np.random.randint(0,10))] * self.group_order,
+            2: [Scalar(np.random.randint(0,10))] * self.group_order,
+            3: [Scalar(np.random.randint(0,10))] * self.group_order,
+        }
+
+        T = {}
+        T[1] = Polynomial(T_values[1], Basis.LAGRANGE)
+        T[2] = Polynomial(T_values[2], Basis.LAGRANGE)
+        T[3] = Polynomial(T_values[3], Basis.LAGRANGE)
+
+        return T
 
     # Get the list of public variable assignments, in order
     def get_public_assignments(self) -> list[Optional[str]]:
@@ -139,6 +165,7 @@ class Program:
         M = [Scalar(0) for _ in range(self.group_order)]
         O = [Scalar(0) for _ in range(self.group_order)]
         C = [Scalar(0) for _ in range(self.group_order)]
+        K = [Scalar(0) for _ in range(self.group_order)]
         for i, constraint in enumerate(self.constraints):
             gate = constraint.gate()
             L[i] = gate.L
@@ -146,12 +173,14 @@ class Program:
             M[i] = gate.M
             O[i] = gate.O
             C[i] = gate.C
+            K[i] = gate.K
         return (
             Polynomial(L, Basis.LAGRANGE),
             Polynomial(R, Basis.LAGRANGE),
             Polynomial(M, Basis.LAGRANGE),
             Polynomial(O, Basis.LAGRANGE),
             Polynomial(C, Basis.LAGRANGE),
+            Polynomial(K, Basis.LAGRANGE),
         )
 
     # Attempts to "run" the program to fill in any intermediate variable

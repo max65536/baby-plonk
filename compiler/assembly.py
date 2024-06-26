@@ -2,6 +2,7 @@ from utils import *
 from .utils import *
 from typing import Optional
 from dataclasses import dataclass
+import numpy as np
 
 
 @dataclass
@@ -25,6 +26,7 @@ class Gate:
     M: Scalar
     O: Scalar
     C: Scalar
+    K: Scalar
 
 
 @dataclass
@@ -54,9 +56,11 @@ class AssemblyEqn:
                 -self.coeffs.get(get_product_key(self.wires.L, self.wires.R), 0)
             )
         return Scalar(0)
-
+    def K(self) -> Scalar:
+        # 随机生成0或1
+        return Scalar(np.random.randint(0,2))
     def gate(self) -> Gate:
-        return Gate(self.L(), self.R(), self.M(), self.O(), self.C())
+        return Gate(self.L(), self.R(), self.M(), self.O(), self.C(), self.K())
 
 
 # Converts a arithmetic expression containing numbers, variables and {+, -, *}

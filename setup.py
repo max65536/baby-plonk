@@ -70,6 +70,10 @@ class Setup(object):
             self.commit(pk.S1),
             self.commit(pk.S2),
             self.commit(pk.S3),
+            self.commit(pk.QK),
+            self.commit(pk.T1),
+            self.commit(pk.T2),
+            self.commit(pk.T3),
             self.X2,
             Scalar.root_of_unity(pk.group_order),
         )
